@@ -4,7 +4,7 @@ A web-based dashboard designed to provide comprehensive sales analytics by secur
 
 ## Live Demo
 
-\[Link to your deployed Cloud Run service]
+[\[Link to your deployed Cloud Run service]](https://baking-dashboard-197494690319.asia-south1.run.app/login)
 
 ---
 
