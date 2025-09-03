@@ -61,6 +61,13 @@ SCOPES = [
 ALLOWED_USERS = ["legocreations2.com", "vinayakbose315@gmail.com", "pradheerbose@gmail.com", "pranalibose01@gmail.com"]
 FILE_ID = "1tB8RDy8I8iQLn7WFfeNlauWcHlHr-Cy7"
 
+data_cache = {
+    'df': None, 'unique_months': None, 'all_items': None,
+    'total_pie_chart': None, 'top_items': None, 'customer_data': None,
+    'summary_stats': {}, 'last_updated': None
+}
+CACHE_TTL = timedelta(minutes=10)
+
 def get_flow(state=None):
     redirect_uri = url_for("callback", _external=True)
     return Flow.from_client_config(
@@ -70,12 +77,16 @@ def get_flow(state=None):
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 def load_and_process_data():
-    if 'df_sales_data' in session:
-        return pd.read_json(session['df_sales_data']), None
+    global data_cache
+    now = datetime.utcnow()
 
+    if data_cache['last_updated'] and (now - data_cache['last_updated'] < CACHE_TTL):
+        logging.info("Serving data from fresh cache.")
+        return data_cache['df'], None
+
+    logging.info("Cache is stale or empty. Refreshing data from Google Drive...")
     try:
         credentials = Credentials.from_authorized_user_info(session['credentials'])
-        
         drive_service = build("drive", "v3", credentials=credentials)
         request_file = drive_service.files().get_media(fileId=FILE_ID)
         fh = io.BytesIO()
@@ -86,9 +97,20 @@ def load_and_process_data():
         fh.seek(0)
         file_content = fh.read()
 
-        df = pd.read_excel(io.BytesIO(file_content))
-        
-        summary_df = pd.read_excel(io.BytesIO(file_content), usecols="I", header=None, skiprows=1, nrows=5)
+        # MODIFIED: Explicitly read from the "Orders" sheet for all calculations.
+        # This makes the code robustly calculate data from the correct sheet.
+        try:
+            df = pd.read_excel(io.BytesIO(file_content), sheet_name="Orders")
+            summary_df = pd.read_excel(io.BytesIO(file_content), sheet_name="Orders", usecols="I", header=None, skiprows=1, nrows=5)
+        except Exception as e:
+            # Fallback for safety if "Orders" sheet is not found
+            if "No sheet named 'Orders'" in str(e):
+                 logging.warning("No sheet named 'Orders' found. Falling back to the first sheet.")
+                 df = pd.read_excel(io.BytesIO(file_content))
+                 summary_df = pd.read_excel(io.BytesIO(file_content), usecols="I", header=None, skiprows=1, nrows=5)
+            else:
+                raise e
+
         total_paid = summary_df.iloc[0, 0]
         total_due = summary_df.iloc[1, 0]
         total_delivered = summary_df.iloc[2, 0]
@@ -99,29 +121,34 @@ def load_and_process_data():
         df.dropna(subset=['DATE'], inplace=True)
         df['AMOUNT'] = pd.to_numeric(df['AMOUNT'], errors='coerce').fillna(0)
         
-        session['df_sales_data'] = df.to_json()
-        
+        data_cache['df'] = df
         unique_months_dt = df['DATE'].dt.to_period('M').unique()
         sorted_months = sorted(unique_months_dt, reverse=True)
-        session['unique_months'] = [period.strftime('%B %Y') for period in sorted_months]
-        session['all_items'] = sorted(df['ITEM NAME'].dropna().unique())
-        
-        session['summary_stats'] = {
+        data_cache['unique_months'] = [period.strftime('%B %Y') for period in sorted_months]
+        data_cache['all_items'] = sorted(df['ITEM NAME'].dropna().unique())
+        data_cache['summary_stats'] = {
             'total_paid': int(total_paid), 'total_due': int(total_due),
             'total_delivered': int(total_delivered), 'total_sales_all_time': int(total_sales_all_time)
         }
+        data_cache['total_pie_chart'] = create_pie_chart(df, "Item Share (All Time)", top_n=10)
+        data_cache['top_items'] = get_top_items(df).to_dict(orient="records")
+        data_cache['customer_data'] = get_customer_data(df).to_dict(orient="records")
+        data_cache['last_updated'] = now
         
+        logging.info("Cache successfully refreshed.")
         return df, None
         
     except HttpError as error:
-        if error.resp.status == 401:
-            return None, "re-login"
+        if error.resp.status == 401: return None, "re-login"
         return None, f"Drive Error: {error}"
     except Exception as e:
+        logging.error(f"An error occurred during data processing: {e}", exc_info=True)
         return None, f"Error processing file: {e}"
 
 def get_customer_data(df):
+    """This function calculates customer data directly from the main dataframe."""
     if df is None: return None
+    # Group by customer name, then count their orders and sum their total amount spent.
     return df.groupby('ORDERED BY').agg(
         TotalOrders=('ORDERED BY', 'count'), TotalSpent=('AMOUNT', 'sum')
     ).sort_values(by='TotalSpent', ascending=False).reset_index()
@@ -139,33 +166,57 @@ def get_item_stats(df, selected_item):
     if item_df.empty: return {'order_count': 0, 'total_sales': 0}
     return {'order_count': len(item_df), 'total_sales': item_df['AMOUNT'].sum()}
 
-# --- MODIFIED: Added 'top_n' parameter ---
 def create_pie_chart(data, title, top_n=5):
-    font_name = "Inter";
-    try: findfont(FontProperties(family=font_name))
-    except ValueError: font_name = None
+    # MODIFIED: This function now uses sales amount ('AMOUNT') instead of order count.
+    font_name = "Inter"
+    try:
+        findfont(FontProperties(family=font_name))
+    except ValueError:
+        font_name = None
+
     fig, ax = plt.subplots(figsize=(10, 7), dpi=100)
-    bg_color = "#1a1a1a"; text_color = "#f9fafb"
-    fig.patch.set_facecolor(bg_color); ax.set_facecolor(bg_color)
-    if data.empty or data['ITEM NAME'].isnull().all():
-        ax.text(0.5, 0.5, 'No item data', ha='center', va='center', color=text_color, fontsize=14)
+    bg_color = "#1a1a1a"
+    text_color = "#f9fafb"
+    fig.patch.set_facecolor(bg_color)
+    ax.set_facecolor(bg_color)
+
+    if data.empty or data['ITEM NAME'].isnull().all() or data['AMOUNT'].sum() == 0:
+        ax.text(0.5, 0.5, 'No sales data', ha='center', va='center', color=text_color, fontsize=14)
     else:
-        item_counts = data['ITEM NAME'].value_counts()
-        # --- MODIFIED: Use 'top_n' parameter ---
-        if len(item_counts) > top_n:
-            top_items = item_counts.head(top_n)
-            others = pd.Series([item_counts.iloc[top_n:].sum()], index=['Others'])
-            item_counts = pd.concat([top_items, others])
-        wedges, _ = ax.pie(item_counts, startangle=140, wedgeprops=dict(width=0.4, edgecolor=bg_color))
-        total = item_counts.sum()
-        labels = [f"{name} ({count/total:.1%})" for name, count in item_counts.items()]
-        legend = ax.legend(wedges, labels, title=f"Top {top_n} Items", loc="center left", bbox_to_anchor=(1, 0.5),
-                           prop={'family': font_name, 'size': 14}, labelcolor=text_color, frameon=True)
-        frame = legend.get_frame(); frame.set_facecolor('#1a1a1a'); frame.set_edgecolor('none')
-        plt.setp(legend.get_title(), color=text_color, weight='bold', family=font_name, size=16)
+        item_sales = data.groupby('ITEM NAME')['AMOUNT'].sum().sort_values(ascending=False)
+
+        if len(item_sales) > top_n:
+            top_items = item_sales.head(top_n)
+            others_sum = item_sales.iloc[top_n:].sum()
+            if others_sum > 0:
+                others = pd.Series([others_sum], index=['Others'])
+                chart_data = pd.concat([top_items, others])
+            else:
+                chart_data = top_items
+        else:
+            chart_data = item_sales
+        
+        chart_data = chart_data[chart_data > 0]
+
+        if chart_data.empty:
+            ax.text(0.5, 0.5, 'No sales data', ha='center', va='center', color=text_color, fontsize=14)
+        else:
+            wedges, _ = ax.pie(chart_data, startangle=140, wedgeprops=dict(width=0.4, edgecolor=bg_color))
+            total_sales = chart_data.sum()
+            labels = [f"{name} ({sales/total_sales:.1%})" for name, sales in chart_data.items()]
+            legend_title = f"Top {top_n} Items by Sales"
+            legend = ax.legend(wedges, labels, title=legend_title, loc="center left", bbox_to_anchor=(1, 0.5),
+                               prop={'family': font_name, 'size': 14}, labelcolor=text_color, frameon=True)
+            frame = legend.get_frame()
+            frame.set_facecolor('#1a1a1a')
+            frame.set_edgecolor('none')
+            plt.setp(legend.get_title(), color=text_color, weight='bold', family=font_name, size=16)
+
     ax.set_title(title, color=text_color, fontfamily=font_name, fontsize=18, weight='bold')
     fig.tight_layout(rect=[0, 0, 0.75, 1])
-    buf = io.BytesIO(); plt.savefig(buf, format='png', transparent=True); plt.close(fig)
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', transparent=True)
+    plt.close(fig)
     return base64.b64encode(buf.getvalue()).decode('utf-8')
 
 def create_sales_trend_chart(df, start_date, end_date):
@@ -236,28 +287,26 @@ def dashboard():
         
     active_tab = request.form.get('active_tab', 'monthwise')
 
-    unique_months = session.get('unique_months', [])
-    selected_month = request.form.get("month_selector", unique_months[0] if unique_months else "")
+    # --- Monthwise Tab Data ---
+    selected_month = request.form.get("month_selector", data_cache['unique_months'][0] if data_cache['unique_months'] else "")
     filtered_df = df_sales_data[df_sales_data["DATE"].dt.strftime("%B %Y") == selected_month]
     total_orders_month = filtered_df["ORDERED BY"].count()
     total_sales_month = filtered_df["AMOUNT"].sum()
-    most_ordered_item = (
-        filtered_df["ITEM NAME"].mode()[0]
-        if not filtered_df.empty and not filtered_df["ITEM NAME"].mode().empty else "N/A"
-    )
+    
+    # MODIFIED: Most ordered item is now based on highest sales amount for the month.
+    if not filtered_df.empty and filtered_df['AMOUNT'].sum() > 0:
+        most_ordered_item = filtered_df.groupby('ITEM NAME')['AMOUNT'].sum().idxmax()
+    else:
+        most_ordered_item = "N/A"
+        
     monthly_pie_chart = create_pie_chart(filtered_df, "Item Share This Month", top_n=5)
     
-    # --- MODIFIED: Call with top_n=10 ---
-    total_pie_chart = create_pie_chart(df_sales_data, "Item Share (All Time)", top_n=10)
-    top_items = get_top_items(df_sales_data)
-    
-    customer_data = get_customer_data(df_sales_data)
-
-    all_items = session.get('all_items', [])
-    default_item = all_items[0] if all_items else None
+    # --- Items Tab Data ---
+    default_item = data_cache['all_items'][0] if data_cache['all_items'] else None
     selected_item = request.form.get("item_selector", default_item)
     item_stats = get_item_stats(df_sales_data, selected_item)
 
+    # --- Trends Tab Data Logic ---
     today = date.today()
     date_range_preset = request.form.get('date_range_preset', 'this_month')
     
@@ -287,14 +336,12 @@ def dashboard():
 
     return render_template(
         "index.html", active_tab=active_tab,
-        unique_months=unique_months, selected_month=selected_month,
+        unique_months=data_cache['unique_months'], selected_month=selected_month,
         total_orders_month=total_orders_month, total_sales_month=f"₹{total_sales_month:,.0f}",
         most_ordered_item=most_ordered_item, monthly_pie_chart=monthly_pie_chart,
-        summary_stats=session.get('summary_stats', {}),
-        total_pie_chart=total_pie_chart,
-        customer_data=customer_data.to_dict(orient="records"), 
-        top_items=top_items.to_dict(orient="records"),
-        all_items=all_items, selected_item=selected_item, item_stats=item_stats,
+        summary_stats=data_cache['summary_stats'], total_pie_chart=data_cache['total_pie_chart'],
+        customer_data=data_cache['customer_data'], top_items=data_cache['top_items'],
+        all_items=data_cache['all_items'], selected_item=selected_item, item_stats=item_stats,
         sales_trend_chart=sales_trend_chart, date_range_preset=date_range_preset,
         start_date=start_date.strftime('%Y-%m-%d'), end_date=end_date.strftime('%Y-%m-%d')
     )
@@ -304,11 +351,9 @@ def refresh():
     if "credentials" not in session:
         return redirect(url_for("index"))
     
-    session.pop('df_sales_data', None)
-    session.pop('unique_months', None)
-    session.pop('all_items', None)
-    session.pop('summary_stats', None)
-    logging.info("Session cache manually invalidated. Data will be refreshed on next load.")
+    global data_cache
+    data_cache['last_updated'] = None
+    logging.info("Cache manually invalidated. Data will be refreshed on next load.")
     return redirect(url_for("dashboard"))
 
 @app.route("/logout")
