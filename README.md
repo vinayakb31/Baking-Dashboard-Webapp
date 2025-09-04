@@ -3,8 +3,7 @@
 A web-based dashboard designed to provide comprehensive sales analytics by securely pulling data from a private Google Sheet. The application is built with Python (Flask) and deployed as a container on Google Cloud Run. It features a responsive, dark-themed UI built with Tailwind CSS.
 
 ## Live Demo
-
-[\[Link to your deployed Cloud Run service]](https://baking-dashboard-197494690319.asia-south1.run.app/login)
+https://baking-dashboard-197494690319.asia-south1.run.app/login
 
 ---
 
