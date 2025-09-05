@@ -20,13 +20,29 @@ from googleapiclient.http import MediaIoBaseDownload
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
-# Use non-GUI backend for matplotlib
 matplotlib.use("Agg")
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
+def load_authorized_users(filename="authorized_users.txt"):
+    """Loads authorized user emails from a text file."""
+    if not os.path.exists(filename):
+        logging.warning(f"Authorization file '{filename}' not found. Creating a placeholder.")
+        with open(filename, 'w') as f:
+            f.write("# Add one authorized email per line\n")
+        return []
+    try:
+        with open(filename, 'r') as f:
+            # Read lines, strip whitespace, and ignore empty lines or comments
+            users = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+        logging.info(f"Loaded {len(users)} authorized users from '{filename}'.")
+        return users
+    except Exception as e:
+        logging.error(f"Error reading authorization file '{filename}': {e}", exc_info=True)
+        return []
+
 # --- Flask App and Secret Key Initialization ---
 try:
-    app = Flask(__name__)
+    app = Flask(__name__, template_folder='templates')
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
     app.secret_key = os.environ.get("FLASK_SECRET_KEY")
     
@@ -58,7 +74,8 @@ SCOPES = [
     "https://www.googleapis.com/auth/userinfo.profile",
     "https://www.googleapis.com/auth/drive.readonly"
 ]
-ALLOWED_USERS = ["legocreations2.com", "vinayakbose315@gmail.com", "pradheerbose@gmail.com", "pranalibose01@gmail.com"]
+# MODIFIED: Load authorized users from the new file
+ALLOWED_USERS = load_authorized_users()
 FILE_ID = "1tB8RDy8I8iQLn7WFfeNlauWcHlHr-Cy7"
 
 data_cache = {
@@ -99,19 +116,20 @@ def load_and_process_data():
 
         try:
             df = pd.read_excel(io.BytesIO(file_content), sheet_name="Orders")
-            summary_df = pd.read_excel(io.BytesIO(file_content), sheet_name="Orders", usecols="I", header=None, skiprows=1, nrows=5)
+            summary_df = pd.read_excel(io.BytesIO(file_content), sheet_name="Orders", usecols="I", header=None, skiprows=1, nrows=6)
         except Exception as e:
             if "No sheet named 'Orders'" in str(e):
                  logging.warning("No sheet named 'Orders' found. Falling back to the first sheet.")
                  df = pd.read_excel(io.BytesIO(file_content))
-                 summary_df = pd.read_excel(io.BytesIO(file_content), usecols="I", header=None, skiprows=1, nrows=5)
+                 summary_df = pd.read_excel(io.BytesIO(file_content), usecols="I", header=None, skiprows=1, nrows=6)
             else:
                 raise e
 
         total_paid = summary_df.iloc[0, 0]
-        total_due = summary_df.iloc[1, 0]
+        pending_orders = summary_df.iloc[1, 0]
         total_delivered = summary_df.iloc[2, 0]
         total_sales_all_time = summary_df.iloc[3, 0]
+        total_due = summary_df.iloc[4, 0]
 
         df['DATE'] = df['DATE'].ffill()
         df['DATE'] = pd.to_datetime(df['DATE'], errors='coerce')
@@ -125,7 +143,8 @@ def load_and_process_data():
         data_cache['all_items'] = sorted(df['ITEM NAME'].dropna().unique())
         data_cache['summary_stats'] = {
             'total_paid': int(total_paid), 'total_due': int(total_due),
-            'total_delivered': int(total_delivered), 'total_sales_all_time': int(total_sales_all_time)
+            'total_delivered': int(total_delivered), 'total_sales_all_time': int(total_sales_all_time),
+            'pending_orders': int(pending_orders)
         }
         data_cache['total_pie_chart'] = create_pie_chart(df, "Item Share (All Time)", top_n=10)
         data_cache['top_items'] = get_top_items(df).to_dict(orient="records")
@@ -136,32 +155,46 @@ def load_and_process_data():
         return df, None
         
     except HttpError as error:
-        if error.resp.status == 401: return None, "re-login"
+        if error.resp.status == 401 or 'invalid_grant' in str(error):
+            logging.warning(f"Authentication error encountered (Status: {error.resp.status}). Forcing re-login.")
+            return None, "re-login"
         return None, f"Drive Error: {error}"
     except Exception as e:
         logging.error(f"An error occurred during data processing: {e}", exc_info=True)
         return None, f"Error processing file: {e}"
 
 def get_customer_data(df):
-    """This function calculates customer data directly from the main dataframe."""
-    if df is None: return None
+    if df is None: return pd.DataFrame()
     return df.groupby('ORDERED BY').agg(
         TotalOrders=('ORDERED BY', 'count'), TotalSpent=('AMOUNT', 'sum')
     ).sort_values(by='TotalSpent', ascending=False).reset_index()
 
 def get_top_items(df):
-    # MODIFIED: Sorts by TotalSales and shows top 10 items.
-    if df is None: return None
+    if df is None: return pd.DataFrame()
     item_summary = df.groupby('ITEM NAME').agg(
         count=('ITEM NAME', 'count'), TotalSales=('AMOUNT', 'sum')
     )
     return item_summary.nlargest(10, 'TotalSales').reset_index()
 
-def get_item_stats(df, selected_item):
-    if df is None or selected_item is None: return None
-    item_df = df[df['ITEM NAME'] == selected_item]
-    if item_df.empty: return {'order_count': 0, 'total_sales': 0}
-    return {'order_count': len(item_df), 'total_sales': item_df['AMOUNT'].sum()}
+def get_extended_item_stats(df, selected_item):
+    if df is None or selected_item is None:
+        return {'order_count': 0, 'total_sales': 0, 'top_customers': [], 'recent_orders': []}
+    
+    item_df = df[df['ITEM NAME'] == selected_item].copy()
+    if item_df.empty:
+        return {'order_count': 0, 'total_sales': 0, 'top_customers': [], 'recent_orders': []}
+
+    item_df['DATE_str'] = item_df['DATE'].dt.strftime('%d %b %Y')
+
+    top_customers = item_df.groupby('ORDERED BY')['AMOUNT'].sum().nlargest(5).reset_index()
+    recent_orders = item_df.nlargest(5, 'DATE')[['DATE_str', 'ORDERED BY', 'AMOUNT']]
+    
+    return {
+        'order_count': len(item_df),
+        'total_sales': item_df['AMOUNT'].sum(),
+        'top_customers': top_customers.to_dict(orient='records'),
+        'recent_orders': recent_orders.rename(columns={'DATE_str': 'DATE'}).to_dict(orient='records')
+    }
 
 def create_pie_chart(data, title, top_n=5):
     font_name = "Inter"
@@ -169,7 +202,7 @@ def create_pie_chart(data, title, top_n=5):
     except ValueError: font_name = None
 
     fig, ax = plt.subplots(figsize=(10, 7), dpi=100)
-    bg_color, text_color = "#1a1a1a", "#f9fafb"
+    bg_color = "#1a1a1a"; text_color = "#f9fafb"
     fig.patch.set_facecolor(bg_color); ax.set_facecolor(bg_color)
 
     if data.empty or data['ITEM NAME'].isnull().all() or data['AMOUNT'].sum() == 0:
@@ -179,7 +212,9 @@ def create_pie_chart(data, title, top_n=5):
         chart_data = item_sales.head(top_n)
         if len(item_sales) > top_n:
             others_sum = item_sales.iloc[top_n:].sum()
-            if others_sum > 0: chart_data['Others'] = others_sum
+            if others_sum > 0:
+                others = pd.Series([others_sum], index=['Others'])
+                chart_data = pd.concat([chart_data, others])
         
         chart_data = chart_data[chart_data > 0]
         if chart_data.empty:
@@ -191,8 +226,7 @@ def create_pie_chart(data, title, top_n=5):
             legend_title = f"Top {top_n} Items by Sales"
             legend = ax.legend(wedges, labels, title=legend_title, loc="center left", bbox_to_anchor=(1, 0.5),
                                prop={'family': font_name, 'size': 14}, labelcolor=text_color, frameon=True)
-            frame = legend.get_frame()
-            frame.set_facecolor('#1a1a1a'); frame.set_edgecolor('none')
+            frame = legend.get_frame(); frame.set_facecolor('#1a1a1a'); frame.set_edgecolor('none')
             plt.setp(legend.get_title(), color=text_color, weight='bold', family=font_name, size=16)
 
     ax.set_title(title, color=text_color, fontfamily=font_name, fontsize=18, weight='bold')
@@ -203,19 +237,19 @@ def create_pie_chart(data, title, top_n=5):
 def create_sales_trend_chart(df, start_date, end_date):
     mask = (df['DATE'] >= start_date) & (df['DATE'] <= end_date)
     filtered_df = df.loc[mask]
-    
     daily_sales = filtered_df.groupby(filtered_df['DATE'].dt.date)['AMOUNT'].sum()
     
     fig, ax = plt.subplots(figsize=(12, 6), dpi=100)
-    bg_color, text_color = "#1a1a1a", "#f9fafb"
+    bg_color = "#1a1a1a"; text_color = "#f9fafb"
     fig.patch.set_facecolor(bg_color); ax.set_facecolor(bg_color)
     
-    ax.plot(daily_sales.index, daily_sales.values, marker='o', linestyle='-', color='#3b82f6')
+    ax.plot(daily_sales.index, daily_sales.values, marker='o', linestyle='-', color='#e5e7eb')
+    
     ax.set_title('Daily Sales Trend', color=text_color, fontsize=18, weight='bold')
     ax.set_ylabel('Total Sales (₹)', color=text_color, fontsize=12)
-    ax.tick_params(axis='x', colors=text_color, rotation=45)
-    ax.tick_params(axis='y', colors=text_color)
+    ax.tick_params(axis='x', colors=text_color, rotation=45); ax.tick_params(axis='y', colors=text_color)
     ax.grid(color='#374151', linestyle='--', linewidth=0.5)
+    
     plt.gca().spines['top'].set_visible(False); plt.gca().spines['right'].set_visible(False)
     plt.gca().spines['left'].set_color(text_color); plt.gca().spines['bottom'].set_color(text_color)
     
@@ -236,10 +270,15 @@ def login():
 
 @app.route("/callback")
 def callback():
+    if 'state' not in session:
+        logging.warning("Session state missing in callback. Redirecting to home.")
+        return redirect(url_for('index'))
+    
     flow = get_flow(state=session["state"])
     flow.fetch_token(authorization_response=request.url)
     credentials = flow.credentials
-    idinfo = id_token.verify_oauth2_token(credentials.id_token, google_requests.Request(), CLIENT_ID)
+    request_adapter = google_requests.Request()
+    idinfo = id_token.verify_oauth2_token(credentials.id_token, request_adapter, CLIENT_ID)
     user_email = idinfo.get("email")
     if user_email not in ALLOWED_USERS:
         session.clear()
@@ -254,7 +293,10 @@ def dashboard():
     if "credentials" not in session: return redirect(url_for("index"))
 
     df_sales_data, error = load_and_process_data()
-    if error == "re-login": session.clear(); return redirect(url_for("login"))
+    
+    if error == "re-login": 
+        session.clear()
+        return redirect(url_for("login"))
     if error: return f"<h1>Error</h1><p>{error}</p>"
         
     active_tab = request.form.get('active_tab', 'monthwise')
@@ -264,28 +306,43 @@ def dashboard():
     filtered_df = df_sales_data[df_sales_data["DATE"].dt.strftime("%B %Y") == selected_month]
     total_orders_month = filtered_df["ORDERED BY"].count()
     total_sales_month = filtered_df["AMOUNT"].sum()
+    
     if not filtered_df.empty and filtered_df['AMOUNT'].sum() > 0:
         most_ordered_item = filtered_df.groupby('ITEM NAME')['AMOUNT'].sum().idxmax()
     else: most_ordered_item = "N/A"
+        
     monthly_pie_chart = create_pie_chart(filtered_df, "Item Share This Month", top_n=5)
     
     # --- Items Tab Data ---
     default_item = data_cache['all_items'][0] if data_cache['all_items'] else None
     selected_item = request.form.get("item_selector", default_item)
-    item_stats = get_item_stats(df_sales_data, selected_item)
+    item_stats = get_extended_item_stats(df_sales_data, selected_item)
 
     # --- Trends Tab Data Logic ---
     today = date.today()
     date_range_preset = request.form.get('date_range_preset', 'this_month')
     
     def subtract_months(sourcedate, months):
-        month = sourcedate.month - 1 - months; year = sourcedate.year + month // 12
-        return date(year, month % 12 + 1, 1)
+        month = sourcedate.month - 1 - months
+        year = sourcedate.year + month // 12
+        month = month % 12 + 1
+        return date(year, month, 1)
 
-    if date_range_preset == 'last_3_months': start_date, end_date = subtract_months(today, 2), today
-    elif date_range_preset == 'last_6_months': start_date, end_date = subtract_months(today, 5), today
-    elif date_range_preset == 'all_time': start_date, end_date = df_sales_data['DATE'].min(), df_sales_data['DATE'].max()
-    else: start_date, end_date = today.replace(day=1), today
+    if date_range_preset == 'this_month':
+        start_date = today.replace(day=1)
+        end_date = today
+    elif date_range_preset == 'last_3_months':
+        start_date = subtract_months(today, 2)
+        end_date = today
+    elif date_range_preset == 'last_6_months':
+        start_date = subtract_months(today, 5)
+        end_date = today
+    elif date_range_preset == 'all_time':
+        start_date = df_sales_data['DATE'].min()
+        end_date = df_sales_data['DATE'].max()
+    else:
+        start_date = today.replace(day=1)
+        end_date = today
 
     sales_trend_chart = create_sales_trend_chart(df_sales_data, pd.to_datetime(start_date), pd.to_datetime(end_date))
 
@@ -297,7 +354,8 @@ def dashboard():
         summary_stats=data_cache['summary_stats'], total_pie_chart=data_cache['total_pie_chart'],
         customer_data=data_cache['customer_data'], top_items=data_cache['top_items'],
         all_items=data_cache['all_items'], selected_item=selected_item, item_stats=item_stats,
-        sales_trend_chart=sales_trend_chart, date_range_preset=date_range_preset
+        sales_trend_chart=sales_trend_chart, date_range_preset=date_range_preset,
+        start_date=start_date.strftime('%Y-%m-%d'), end_date=end_date.strftime('%Y-%m-%d')
     )
 
 @app.route("/refresh")
