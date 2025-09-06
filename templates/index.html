@@ -68,7 +68,7 @@
       </div>
     </header>
 
-    <div x-show="mobileMenuOpen" x-cloak x-transition class="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col items-center justify-center space-y-8">
+    <div x-show="mobileMenuOpen" x-cloak x-transition class="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center space-y-8">
       <button @click="mobileMenuOpen = false" class="absolute top-5 right-5 p-2 text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
       <a href="#" @click="activeTab = 'monthwise'; mobileMenuOpen = false" class="text-3xl font-bold">Monthwise</a>
       <a href="#" @click="activeTab = 'total'; mobileMenuOpen = false" class="text-3xl font-bold">Total</a>
@@ -105,7 +105,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
           <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="bg-[#1a1a1a] p-6 rounded-xl border border-neutral-700"><h3 class="text-gray-400 font-bold text-lg">Total Paid</h3><p class="text-5xl font-extrabold mt-2 text-white">₹{{ "{:,.0f}".format(summary_stats.total_paid) }}</p></div>
-            <div class="bg-[#1a1a1a] p-6 rounded-xl border border-neutral-700"><h3 class="text-gray-400 font-bold text-lg">Total Due</h3><p class="text-5xl font-extrabold mt-2 text-white">₹{{ "{:,.0f}".format(summary_stats.total_due) }}</p></div>
+            <div class="bg-[#1a1a1a] p-6 rounded-xl border border-neutral-700"><h3 class="text-gray-400 font-bold text-lg">Pending Payments</h3><p class="text-5xl font-extrabold mt-2 text-white">₹{{ "{:,.0f}".format(summary_stats.total_due) }}</p></div>
             <div class="bg-[#1a1a1a] p-6 rounded-xl border border-neutral-700"><h3 class="text-gray-400 font-bold text-lg">Pending Orders</h3><p class="text-5xl font-extrabold mt-2 text-white">₹{{ "{:,.0f}".format(summary_stats.pending_orders) }}</p></div>
             <div class="bg-[#1a1a1a] p-6 rounded-xl border border-neutral-700"><h3 class="text-gray-400 font-bold text-lg">Sales (Delivered)</h3><p class="text-5xl font-extrabold mt-2 text-white">₹{{ "{:,.0f}".format(summary_stats.total_delivered) }}</p></div>
             <div class="bg-[#1a1a1a] p-6 rounded-xl border border-neutral-700"><h3 class="text-gray-400 font-bold text-lg">Total Sales (All Time)</h3><p class="text-5xl font-extrabold mt-2 text-white">₹{{ "{:,.0f}".format(summary_stats.total_sales_all_time) }}</p></div>
@@ -124,20 +124,25 @@
       </div>
 
       <!-- Customers -->
-      <div x-show="activeTab === 'customers'" x-cloak x-data="{ searchQuery: '', customers: {{ customer_data | tojson | safe or '[]' }} }">
-        <div class="max-w-4xl mx-auto">
+      <div x-show="activeTab === 'customers'" x-cloak x-data="{ searchQuery: '', customers: [] }" x-init="customers = JSON.parse($el.dataset.customers)" data-customers="{{ customer_data_json | e }}">
+        <div class="max-w-2xl mx-auto">
           <div class="bg-[#1a1a1a] p-4 md:p-8 rounded-xl border border-neutral-700">
             <div class="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
               <h2 class="text-2xl font-bold">Customer Summary</h2>
               <input type="text" x-model="searchQuery" placeholder="Search customers..." class="bg-neutral-800 border border-neutral-700 rounded-lg py-2 px-4 w-full md:w-1/3">
             </div>
-            <div class="hidden md:grid grid-cols-3 gap-4 px-4 pb-2 border-b border-neutral-700"><div class="font-bold text-lg">Customer Name</div><div class="font-bold text-lg text-center">Total Orders</div><div class="font-bold text-lg text-right">Total Spent</div></div>
+            <div class="hidden md:grid grid-cols-2 gap-4 px-4 pb-2 border-b border-neutral-700">
+              <div class="font-bold text-lg">Customer Name</div>
+              <div class="font-bold text-lg text-right">Total Spent</div>
+            </div>
             <div class="max-h-[70vh] overflow-y-auto custom-scrollbar">
               <template x-for="customer in customers.filter(c => c['ORDERED BY'].toLowerCase().includes(searchQuery.toLowerCase()))" :key="customer['ORDERED BY']">
-                <div class="p-4 rounded-lg hover:bg-neutral-800/50 flex flex-col md:grid md:grid-cols-3 gap-2 md:gap-4 border-b md:border-none border-neutral-700">
+                <div class="p-4 rounded-lg hover:bg-neutral-800/50 flex flex-col md:grid md:grid-cols-2 gap-2 md:gap-4 border-b md:border-none border-neutral-700">
                   <div class="text-lg font-bold md:font-normal md:text-base" x-text="customer['ORDERED BY']"></div>
-                  <div class="flex justify-between md:justify-center md:text-center"><span class="text-gray-400 md:hidden">Total Orders:</span><span class="text-base" x-text="customer['TotalOrders']"></span></div>
-                  <div class="flex justify-between md:justify-end md:text-right"><span class="text-gray-400 md:hidden">Total Spent:</span><span class="text-base" x-text="'₹' + new Intl.NumberFormat('en-IN').format(customer['TotalSpent'])"></span></div>
+                  <div class="flex justify-between md:justify-end md:text-right">
+                    <span class="text-gray-400 md:hidden">Total Spent:</span>
+                    <span class="text-base" x-text="'₹' + new Intl.NumberFormat('en-IN').format(customer['TotalSpent'])"></span>
+                  </div>
                 </div>
               </template>
             </div>

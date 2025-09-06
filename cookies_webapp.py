@@ -4,10 +4,10 @@ import uuid
 import logging
 import base64
 import pandas as pd
+import json
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import findfont, FontProperties
-import json
 from datetime import timedelta, datetime, date
 
 from flask import Flask, render_template, request, session, redirect, url_for
@@ -148,7 +148,32 @@ def load_and_process_data():
         }
         data_cache['total_pie_chart'] = create_pie_chart(df, "Item Share (All Time)", top_n=10)
         data_cache['top_items'] = get_top_items(df).to_dict(orient="records")
-        data_cache['customer_data'] = get_customer_data(df).to_dict(orient="records")
+        
+        # --- Load Customer Data ---
+        # Tries to load from a dedicated "Customers" sheet first.
+        # If it fails (e.g., sheet not found, columns are wrong), it falls back
+        # to calculating the data from the "Orders" sheet for robustness.
+        try:
+            logging.info("Attempting to load data from 'Customers' sheet.")
+            customers_fh = io.BytesIO(file_content)
+            customer_df = pd.read_excel(customers_fh, sheet_name="Customers")
+            
+            # Validate that the required columns exist
+            if 'ORDERED BY' not in customer_df.columns or 'TOTAL AMOUNT' not in customer_df.columns:
+                 raise ValueError("The 'Customers' sheet must contain 'ORDERED BY' and 'TOTAL AMOUNT' columns.")
+
+            # Select, rename, and process the columns to match the frontend's needs
+            customer_df = customer_df[['ORDERED BY', 'TOTAL AMOUNT']].copy()
+            customer_df.rename(columns={'TOTAL AMOUNT': 'TotalSpent'}, inplace=True)
+            customer_df['TotalSpent'] = pd.to_numeric(customer_df['TotalSpent'], errors='coerce').fillna(0)
+            customer_df.sort_values(by='TotalSpent', ascending=False, inplace=True)
+
+            data_cache['customer_data'] = customer_df.to_dict(orient="records")
+            logging.info("Successfully loaded customer data from 'Customers' sheet.")
+        except Exception as e:
+            logging.warning(f"Could not load from 'Customers' sheet: {e}. Falling back to calculating from 'Orders' sheet.")
+            # Fallback to the original method if the 'Customers' sheet isn't available
+            data_cache['customer_data'] = get_customer_data(df).to_dict(orient="records")
         data_cache['last_updated'] = now
         
         logging.info("Cache successfully refreshed.")
@@ -346,13 +371,18 @@ def dashboard():
 
     sales_trend_chart = create_sales_trend_chart(df_sales_data, pd.to_datetime(start_date), pd.to_datetime(end_date))
 
+    print("--- DEBUG START ---")
+    print("Type of customer_data:", type(data_cache['customer_data']))
+    print("Value of customer_data:", data_cache['customer_data'])
+    print("--- DEBUG END ---")
+
     return render_template(
         "index.html", active_tab=active_tab,
         unique_months=data_cache['unique_months'], selected_month=selected_month,
         total_orders_month=total_orders_month, total_sales_month=f"₹{total_sales_month:,.0f}",
         most_ordered_item=most_ordered_item, monthly_pie_chart=monthly_pie_chart,
         summary_stats=data_cache['summary_stats'], total_pie_chart=data_cache['total_pie_chart'],
-        customer_data=data_cache['customer_data'], top_items=data_cache['top_items'],
+        customer_data_json=json.dumps(data_cache['customer_data']), top_items=data_cache['top_items'],
         all_items=data_cache['all_items'], selected_item=selected_item, item_stats=item_stats,
         sales_trend_chart=sales_trend_chart, date_range_preset=date_range_preset,
         start_date=start_date.strftime('%Y-%m-%d'), end_date=end_date.strftime('%Y-%m-%d')
@@ -374,4 +404,3 @@ def logout():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port, debug=True)
-
