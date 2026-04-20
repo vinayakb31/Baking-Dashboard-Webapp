@@ -1,0 +1,6 @@
+# Python
+venv/
+__pycache__/
+
+# Secrets
+client_secret.json

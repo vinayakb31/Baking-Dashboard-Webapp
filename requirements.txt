@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 Flask==2.3.2
 pandas
 matplotlib
@@ -8,4 +9,16 @@ google-api-python-client
 google-cloud-secret-manager
 openpyxl
 Werkzeug
+=======
+Flask==2.3.2
+pandas
+matplotlib
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+google-api-python-client
+google-cloud-secret-manager
+openpyxl
+Werkzeug
+>>>>>>> 800981e (Add project files for deployment)
 gunicorn

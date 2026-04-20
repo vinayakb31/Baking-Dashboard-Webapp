@@ -1,0 +1,262 @@
+/* Bakelet Design System */
+:root {
+    /* Color Palette - Logo Inspired */
+    --color-cream: #FFF8E1;
+    /* Light background */
+    --color-sage: #D7CCC8;
+    /* Secondary light/beige (replacing sage) */
+    --color-charcoal: #5D4037;
+    /* Primary Dark Brown */
+    --color-rust: #8D6E63;
+    /* Accent Brown */
+    --color-gold: #D4A373;
+    --color-white: #FFFFFF;
+    --color-text-main: #3A3A3A;
+    --color-text-light: #6B6B6B;
+
+    /* Typography */
+    --font-heading: 'Playfair Display', serif;
+    --font-body: 'Lato', sans-serif;
+
+    /* Spacing */
+    --spacing-xs: 0.5rem;
+    --spacing-sm: 1rem;
+    --spacing-md: 2rem;
+    --spacing-lg: 4rem;
+    --spacing-xl: 8rem;
+
+    /* Transitions */
+    --transition-fast: 0.2s ease;
+    --transition-medium: 0.4s ease;
+}
+
+/* Reset & Base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-body);
+    background-color: var(--color-cream);
+    color: var(--color-text-main);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--font-heading);
+    color: var(--color-charcoal);
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+    transition: color var(--transition-fast);
+}
+
+ul {
+    list-style: none;
+}
+
+img {
+    max-width: 100%;
+    display: block;
+}
+
+/* Utility Classes */
+.container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-sm);
+}
+
+.btn {
+    display: inline-block;
+    padding: 12px 32px;
+    border-radius: 50px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border: 2px solid transparent;
+}
+
+.btn-primary {
+    background-color: var(--color-sage);
+    color: var(--color-charcoal);
+}
+
+.btn-primary:hover {
+    background-color: var(--color-charcoal);
+    color: var(--color-white);
+    transform: translateY(-2px);
+}
+
+.btn-outline {
+    border-color: var(--color-charcoal);
+    color: var(--color-charcoal);
+}
+
+.btn-outline:hover {
+    background-color: var(--color-charcoal);
+    color: var(--color-white);
+}
+
+.section-padding {
+    padding: var(--spacing-lg) 0;
+}
+
+.text-center {
+    text-align: center;
+}
+
+/* Navbar */
+.navbar {
+    padding: var(--spacing-md) 0;
+    position: absolute;
+    width: 100%;
+    top: 0;
+    z-index: 10;
+    background: transparent;
+}
+
+.navbar .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    display: block;
+    height: 60px;
+    /* Adjust based on preference */
+}
+
+.logo img {
+    height: 100%;
+    width: auto;
+}
+
+.nav-links {
+    display: flex;
+    gap: var(--spacing-md);
+}
+
+.nav-links a {
+    font-weight: 700;
+    color: var(--color-charcoal);
+    font-size: 1rem;
+    position: relative;
+}
+
+.nav-links a::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: -4px;
+    left: 0;
+    background-color: var(--color-sage);
+    transition: width var(--transition-fast);
+}
+
+.nav-links a:hover::after {
+    width: 100%;
+}
+
+/* Hero Section */
+.hero {
+    height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: linear-gradient(rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.4)), url('https://images.unsplash.com/photo-1517433670267-08bbd4be890f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
+    background-size: cover;
+    background-position: center;
+    position: relative;
+}
+
+.hero-content h1 {
+    font-size: 4.5rem;
+    margin-bottom: var(--spacing-sm);
+    color: var(--color-charcoal);
+}
+
+.hero-content p {
+    font-size: 1.2rem;
+    margin-bottom: var(--spacing-md);
+    color: var(--color-text-main);
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Featured Section */
+.featured-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+}
+
+.product-card {
+    background: var(--color-white);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    transition: transform var(--transition-fast);
+}
+
+.product-card:hover {
+    transform: translateY(-5px);
+}
+
+.product-image {
+    height: 250px;
+    background-color: #eee;
+    background-size: cover;
+    background-position: center;
+}
+
+.product-info {
+    padding: var(--spacing-md);
+    text-align: center;
+}
+
+.product-info h3 {
+    margin-bottom: var(--spacing-xs);
+    font-size: 1.5rem;
+}
+
+.price {
+    color: var(--color-gold);
+    font-weight: 700;
+    font-size: 1.1rem;
+    display: block;
+    margin-bottom: var(--spacing-sm);
+}
+
+/* Footer */
+footer {
+    background-color: var(--color-charcoal);
+    color: var(--color-cream);
+    padding: var(--spacing-lg) 0;
+    text-align: center;
+}
+
+footer p {
+    opacity: 0.8;
+}

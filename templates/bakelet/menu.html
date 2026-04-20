@@ -1,0 +1,26 @@
+{% extends "bakelet/base.html" %}
+
+{% block title %}Menu | Bakelet{% endblock %}
+
+{% block content %}
+<section class="section-padding" style="margin-top: var(--spacing-lg);">
+    <div class="container">
+        <h1 class="text-center" style="margin-bottom: var(--spacing-md);">Our Menu</h1>
+
+        <div class="featured-grid">
+            {% for item in menu_items %}
+            <div class="product-card">
+                <div class="product-image" style="background-image: url('{{ item.image }}');">
+                </div>
+                <div class="product-info">
+                    <h3>{{ item.name }}</h3>
+                    <span class="price">{{ item.price }}</span>
+                    <p>{{ item.description }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+    </div>
+</section>
+{% endblock %}
