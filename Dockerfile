@@ -14,11 +14,14 @@ RUN apt-get update && apt-get install -y \
 # Copy app code
 COPY . .
 
-# Install Python dependencies
+# Install dependencies explicitly
+# We upgrade pip first to ensure compatibility, then install gunicorn and other requirements
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir gunicorn
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Expose port for Cloud Run
+# Expose port for Cloud Run and Render
 ENV PORT 8080
 
-# Use Gunicorn to run the app with debug logging
-CMD exec gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 0 --log-level=debug cookies_webapp:app
+# Use the full path for gunicorn to avoid "not found" errors
+CMD exec /usr/local/bin/gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 0 --log-level=debug cookies_webapp:app
