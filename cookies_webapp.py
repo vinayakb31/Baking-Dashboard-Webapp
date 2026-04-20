@@ -289,8 +289,16 @@ def index():
 
 @app.route("/login")
 def login():
-    state = str(uuid.uuid4()); flow = get_flow(state=state)
-    auth_url, _ = flow.authorization_url(access_type='offline', prompt='consent'); session["state"] = state
+    state = str(uuid.uuid4())
+    flow = get_flow(state=state)
+    auth_url, _ = flow.authorization_url(access_type='offline', prompt='consent')
+    
+    session["state"] = state
+    
+    # Save the PKCE code verifier in the session
+    if hasattr(flow, 'code_verifier'):
+        session["code_verifier"] = flow.code_verifier
+        
     return redirect(auth_url)
 
 @app.route("/callback")
@@ -300,6 +308,11 @@ def callback():
         return redirect(url_for('index'))
     
     flow = get_flow(state=session["state"])
+    
+    # Retrieve the PKCE code verifier from the session
+    if "code_verifier" in session:
+        flow.code_verifier = session["code_verifier"]
+        
     flow.fetch_token(authorization_response=request.url)
     credentials = flow.credentials
     request_adapter = google_requests.Request()
