@@ -2,9 +2,8 @@
 
 A web-based dashboard designed to provide comprehensive sales analytics by securely pulling data from a private Google Sheet. The application is built with Python (Flask) and deployed as a Docker container on Render. It features a responsive, dark-themed UI built with Tailwind CSS.
 
-## Live Demo
+## [Live Demo](https://baking-dashboard-webapp.onrender.com)
 
-https://baking-dashboard-webapp.onrender.com/
 -----
 
 ## Features
