@@ -4,8 +4,7 @@ A web-based dashboard designed to provide comprehensive sales analytics by secur
 
 ## Live Demo
 
-`[https://baking-dashboard-webapp.onrender.com](https://baking-dashboard-webapp.onrender.com)`
-
+https://baking-dashboard-webapp.onrender.com/
 -----
 
 ## Features
