@@ -60,7 +60,7 @@ Follow these steps to run the application on your local machine for development 
       * Under "Authorized redirect URIs", add:
           * `http://127.0.0.1:5000/callback`
           * `http://localhost:5000/callback` (for local testing)
-          * `https://baking-dashboard-webapp.onrender.com` (for production)
+          * `https://baking-dashboard-webapp.onrender.com/callback` (for production)
 
 3.  **Set Up Virtual Environment & Install Dependencies**
 
