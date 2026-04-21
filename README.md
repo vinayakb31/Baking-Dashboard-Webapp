@@ -47,8 +47,8 @@ Follow these steps to run the application on your local machine for development 
 1.  **Clone the Repository**
 
     ```bash
-    git clone [your-repository-url]
-    cd [repository-name]
+    git clone https://github.com/vinayakb31/Baking-Dashboard-Webapp
+    cd Baking-Dashboard-Webapp
     ```
 
 2.  **Set Up Google Cloud Project**
@@ -60,7 +60,7 @@ Follow these steps to run the application on your local machine for development 
       * Under "Authorized redirect URIs", add:
           * `http://127.0.0.1:5000/callback`
           * `http://localhost:5000/callback` (for local testing)
-          * `https://[your-render-app-name].onrender.com/callback` (for production)
+          * `https://baking-dashboard-webapp.onrender.com` (for production)
 
 3.  **Set Up Virtual Environment & Install Dependencies**
 
@@ -84,9 +84,6 @@ Follow these steps to run the application on your local machine for development 
 
     # Generate a strong random key for Flask sessions
     export FLASK_SECRET_KEY="your-own-strong-random-secret-key"
-
-    # Required ONLY for local testing over HTTP with Google OAuth
-    export OAUTHLIB_INSECURE_TRANSPORT=1
     ```
 
 5.  **Run the Application**
@@ -105,7 +102,7 @@ This application is containerized with a `Dockerfile` and configured for automat
 
 ### 1\. Create the Web Service
 
-  * Log in to the [Render Dashboard](https://www.google.com/search?q=https://dashboard.render.com).
+  * Log in to the [Render Dashboard](https://dashboard.render.com).
   * Click **New \> Web Service**.
   * Connect your GitHub repository containing this code.
   * Ensure the **Runtime** is set to `Docker`.
@@ -125,7 +122,7 @@ Do not upload a `.env` file to your repository. Instead, navigate to the **Envir
 
   * Click **Create Web Service** or **Save Changes** to trigger the build process. Render will automatically install Gunicorn and boot the application.
   * Once the service is live, copy your public Render URL.
-  * Return to the **Google Cloud Console \> APIs & Services \> Credentials** and add your exact Render callback URL (e.g., `https://[your-render-app-name].onrender.com/callback`) to the **Authorized redirect URIs** list to enable production logins.
+  * Return to the **Google Cloud Console \> APIs & Services \> Credentials** and add your exact Render callback URL to the **Authorized redirect URIs** list to enable production logins.
 
 ### 4\. Continuous Deployment
 
