@@ -24,4 +24,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 ENV PORT 8080
 
 # Use the full path for gunicorn to avoid "not found" errors
-CMD exec /usr/local/bin/gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 0 --log-level=debug cookies_webapp:app
+CMD exec /usr/local/bin/gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 0 --log-level=debug app:app
