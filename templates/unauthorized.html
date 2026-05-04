@@ -3,77 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Access Denied</title>
+    <title>Access Denied - Baking Dashboard</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
   
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        body { font-family: 'Inter', sans-serif; background: #09090b; }
+        h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        .glass-card { 
+          background: rgba(12, 12, 13, 0.8); 
+          backdrop-filter: blur(8px); 
+          border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        @keyframes slide-in { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-in { animation: slide-in 0.6s ease-out; }
     </style>
 </head>
-<body class="bg-black text-gray-200">
+<body class="bg-zinc-950 text-gray-100 flex items-center justify-center min-h-screen p-4">
 
-    <div class="flex items-center justify-center h-screen">
-        <div class="bg-[#1a1a1a] p-10 rounded-2xl border border-neutral-700 w-full max-w-md text-center">
+    <div class="w-full max-w-md animate-in">
+        <div class="glass-card rounded-3xl p-8 md:p-10 text-center">
             
-            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-900/30">
-                <svg class="h-6 w-6 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            <div class="mx-auto mb-6 w-16 h-16 rounded-full bg-gradient-to-br from-red-900/40 to-red-800/40 border border-red-800/50 flex items-center justify-center">
+                <svg class="w-8 h-8 text-red-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5.657-5.657a1 1 0 00-1.414 0L12 10.586l-2.929-2.929a1 1 0 00-1.414 1.414L10.586 12l-2.929 2.929a1 1 0 101.414 1.414L12 13.414l2.929 2.929a1 1 0 001.414-1.414L13.414 12l2.929-2.929a1 1 0 000-1.414z" />
                 </svg>
             </div>
 
-            <h1 class="text-3xl font-extrabold mt-6 mb-4 text-white">Access Denied</h1>
+            <h1 class="text-3xl md:text-4xl font-bold mb-2">Access Denied</h1>
+            <p class="text-gray-400 mb-4 text-lg">Unauthorized Access</p>
             
-            <p class="text-gray-400 mb-2">The email address:</p>
-            <p class="text-lg font-mono bg-neutral-900 py-2 px-3 rounded-md inline-block mb-6">{{ email }}</p>
-            <p class="text-gray-400 mb-8">is not authorized to access this dashboard. Please contact the administrator if you believe this is an error.</p>
-            
-            <a href="{{ url_for('index') }}" class="inline-block bg-gray-200 hover:bg-gray-300 text-black font-bold py-3 px-6 rounded-lg transition w-full">
-                Go to Login Page
-            </a>
-        </div>
-    </div>
-
-</body>
-=======
-<!DOCTYPE html>
-<html lang="en" class="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Access Denied</title>
-
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
-  
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-    </style>
-</head>
-<body class="bg-black text-gray-200">
-
-    <div class="flex items-center justify-center h-screen">
-        <div class="bg-[#1a1a1a] p-10 rounded-2xl border border-neutral-700 w-full max-w-md text-center">
-            
-            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-900/30">
-                <svg class="h-6 w-6 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                </svg>
+            <div class="bg-red-900/20 border border-red-800/50 rounded-lg py-4 px-4 mb-6">
+                <p class="text-gray-300 text-sm mb-2">Email Address:</p>
+                <p class="text-base font-mono bg-zinc-900 py-2 px-3 rounded-lg break-all">{{ email }}</p>
             </div>
-
-            <h1 class="text-3xl font-extrabold mt-6 mb-4 text-white">Access Denied</h1>
             
-            <p class="text-gray-400 mb-2">The email address:</p>
-            <p class="text-lg font-mono bg-neutral-900 py-2 px-3 rounded-md inline-block mb-6">{{ email }}</p>
-            <p class="text-gray-400 mb-8">is not authorized to access this dashboard. Please contact the administrator if you believe this is an error.</p>
+            <p class="text-gray-400 mb-8 text-sm leading-relaxed">
+                This email address is not authorized to access the Baking Dashboard. Please contact the administrator if you believe this is an error.
+            </p>
             
-            <a href="{{ url_for('index') }}" class="inline-block bg-gray-200 hover:bg-gray-300 text-black font-bold py-3 px-6 rounded-lg transition w-full">
-                Go to Login Page
+            <a href="{{ url_for('index') }}" class="inline-block w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-bold rounded-xl transition duration-200">
+                Return to Login
             </a>
         </div>
     </div>
