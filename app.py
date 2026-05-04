@@ -392,7 +392,7 @@ def dashboard():
     return render_template(
         "index.html", active_tab=active_tab,
         unique_months=data_cache['unique_months'], selected_month=selected_month,
-        total_orders_month=total_orders_month, total_sales_month=f"₹{total_sales_month:,.0f}",
+        total_orders_month=total_orders_month, total_sales_month=total_sales_month,
         most_ordered_item=most_ordered_item, monthly_pie_chart=monthly_pie_chart,
         summary_stats=data_cache['summary_stats'], total_pie_chart=data_cache['total_pie_chart'],
         customer_data_json=json.dumps(data_cache['customer_data']), top_items=data_cache['top_items'],

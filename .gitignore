@@ -4,3 +4,6 @@ __pycache__/
 
 # Secrets
 client_secret.json
+
+#testing commands
+cmds.txt
