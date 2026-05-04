@@ -1,40 +1,37 @@
-# Baking Sales Dashboard
+# Bakelet Sales Dashboard
 
-A web-based dashboard designed to provide comprehensive sales analytics by securely pulling data from a private Google Sheet. The application is built with Python (Flask) and deployed as a container on Google Cloud Run. It features a responsive, dark-themed UI built with Tailwind CSS.
+A web-based dashboard designed to provide comprehensive sales analytics by securely pulling data from a private Google Sheet. The application is built with Python (Flask) and deployed as a Docker container on Render. It features a responsive, dark-themed UI built with Tailwind CSS.
 
-## Live Demo
-https://baking-dashboard-197494690319.asia-south1.run.app/login
-
----
+## [Live Demo](https://baking-dashboard-webapp.onrender.com)
+-----
 
 ## Features
 
-* **Secure Google Authentication**: Users log in via Google OAuth 2.0. Access is restricted to a predefined list of authorized email addresses.
-* **Responsive Design**: A clean, modern UI that works seamlessly on both desktop and mobile devices, featuring a hamburger menu for smaller screens.
-* **Multi-Tabbed Interface**: Data is organized into intuitive tabs for easy navigation:
+  * **Secure Google Authentication**: Users log in via Google OAuth 2.0. Access is restricted to a predefined list of authorized email addresses. The login flow implements PKCE (Proof Key for Code Exchange) and strict cookie security for production environments.
+  * **Responsive Design**: A clean, modern UI that works seamlessly on both desktop and mobile devices, featuring a hamburger menu for smaller screens.
+  * **Multi-Tabbed Interface**: Data is organized into intuitive tabs for easy navigation:
+      * **Monthwise**: View key sales metrics for a specific month, selectable via a dropdown.
+      * **Total**: See all-time summary statistics, including total paid, due amounts, and sales for delivered orders. Features a Top 10 items pie chart and a Top 5 items sales summary.
+      * **Customers**: A searchable list of all customers with their total orders and total amount spent.
+      * **Items**: View statistics (total orders, total sales) for any individual item, selectable via a dropdown.
+      * **Trends**: Visualize daily sales trends with a dynamic line chart. Filter data by presets like "This Month," "Last 3 Months," "Last 6 Months," and "All Time."
+  * **Dynamic Chart Generation**: All charts (pie and line) are generated on the backend with Matplotlib, ensuring they always reflect the most current data.
+  * **Manual Data Refresh**: A "Refresh" button allows users to manually clear the server-side cache and pull the latest data from the source Google Sheet.
+  * **Optimized for Performance**: Utilizes server-side in-memory caching to ensure near-instantaneous response times after the initial data load. The cache automatically refreshes every 10 minutes.
 
-  * **Monthwise**: View key sales metrics for a specific month, selectable via a dropdown.
-  * **Total**: See all-time summary statistics, including total paid, due amounts, and sales for delivered orders. Features a Top 10 items pie chart and a Top 5 items sales summary.
-  * **Customers**: A searchable list of all customers with their total orders and total amount spent.
-  * **Items**: View statistics (total orders, total sales) for any individual item, selectable via a dropdown.
-  * **Trends**: Visualize daily sales trends with a dynamic line chart. Filter data by presets like "This Month," "Last 3 Months," "Last 6 Months," and "All Time."
-* **Dynamic Chart Generation**: All charts (pie and line) are generated on the backend with Matplotlib, ensuring they always reflect the most current data.
-* **Manual Data Refresh**: A "Refresh" button allows users to manually clear the server-side cache and pull the latest data from the source Google Sheet.
-* **Optimized for Performance**: Utilizes server-side in-memory caching to ensure near-instantaneous response times after the initial data load. The cache automatically refreshes every 10 minutes.
-
----
+-----
 
 ## Technology Stack
 
-* **Backend**: Python 3, Flask
-* **Data Analysis**: Pandas
-* **Chart Generation**: Matplotlib
-* **Frontend**: HTML, Tailwind CSS, Alpine.js
-* **Authentication**: Google OAuth 2.0 (via `google-auth-oauthlib`)
-* **Deployment**: Docker, Google Cloud Run, Google Secret Manager
-* **WSGI Server**: Gunicorn
+  * **Backend**: Python 3.13, Flask
+  * **Data Analysis**: Pandas
+  * **Chart Generation**: Matplotlib
+  * **Frontend**: HTML, Tailwind CSS, Alpine.js
+  * **Authentication**: Google OAuth 2.0 (via `google-auth-oauthlib`)
+  * **Deployment**: Docker, Render
+  * **WSGI Server**: Gunicorn
 
----
+-----
 
 ## Setup and Local Development
 
@@ -42,111 +39,97 @@ Follow these steps to run the application on your local machine for development 
 
 ### Prerequisites
 
-* Python 3.9+
-* A Google Cloud Platform project
+  * Python 3.9+
+  * A Google Cloud Platform project
 
 ### Steps
 
-1. **Clone the Repository**
+1.  **Clone the Repository**
 
-   ```bash
-   git clone [your-repository-url]
-   cd [repository-name]
-   ```
+    ```bash
+    git clone https://github.com/vinayakb31/Baking-Dashboard-Webapp
+    cd Baking-Dashboard-Webapp
+    ```
 
-2. **Set Up Google Cloud Project**
+2.  **Set Up Google Cloud Project**
 
-   * Go to the [Google Cloud Console](https://console.cloud.google.com/).
-   * Enable the **Google Drive API**.
-   * Go to **APIs & Services > Credentials**.
-   * Create an OAuth 2.0 Client ID. Select **Web application** as the type.
-   * Under "Authorized redirect URIs," add:
+      * Go to the [Google Cloud Console](https://console.cloud.google.com/).
+      * Enable the **Google Drive API**.
+      * Go to **APIs & Services \> Credentials**.
+      * Create an OAuth 2.0 Client ID. Select **Web application** as the type.
+      * Under "Authorized redirect URIs", add:
+          * `http://127.0.0.1:5000/callback`
+          * `http://localhost:5000/callback` (for local testing)
+          * `https://baking-dashboard-webapp.onrender.com/callback` (for production)
 
-     * `http://127.0.0.1:5000/callback`
-     * `http://localhost:5000/callback` (for local testing)
+3.  **Set Up Virtual Environment & Install Dependencies**
 
-3. **Set Up Virtual Environment & Install Dependencies**
+    ```bash
+    # Create and activate a virtual environment
+    python -m venv venv
+    source venv/bin/activate
 
-   ```bash
-   # Create and activate a virtual environment
-   python -m venv venv
-   source venv/bin/activate
+    # Install the required packages
+    pip install -r requirements.txt
+    ```
 
-   # Install the required packages
-   pip install -r requirements.txt
-   ```
+4.  **Configure Environment Variables**
 
-4. **Configure Environment Variables**
+    The application requires several environment variables to run locally. Set them in your terminal session:
 
-   The application requires several environment variables to run. Set them in your terminal session:
+    ```bash
+    # Get these from your Google OAuth Client ID settings
+    export GOOGLE_CLIENT_ID="YOUR_CLIENT_ID.apps.googleusercontent.com"
+    export GOOGLE_CLIENT_SECRET="YOUR_CLIENT_SECRET"
 
-   ```bash
-   # Get these from your Google OAuth Client ID settings
-   export GOOGLE_CLIENT_ID="YOUR_CLIENT_ID.apps.googleusercontent.com"
-   export GOOGLE_CLIENT_SECRET="YOUR_CLIENT_SECRET"
+    # Generate a strong random key for Flask sessions
+    export FLASK_SECRET_KEY="your-own-strong-random-secret-key"
+    ```
 
-   # Generate a strong random key for Flask sessions
-   export FLASK_SECRET_KEY="your-own-strong-random-secret-key"
+5.  **Run the Application**
 
-   # Required for local testing over HTTP with Google OAuth
-   export OAUTHLIB_INSECURE_TRANSPORT=1
-   ```
+    ```bash
+    python main.py
+    ```
 
-5. **Run the Application**
+    The application will be available at `http://127.0.0.1:5000`.
 
-   ```bash
-   python main.py
-   ```
+-----
 
-   The application will be available at `http://127.0.0.1:5000`.
+## Deployment to Render
 
----
+This application is containerized with a `Dockerfile` and configured for automatic deployment via Render.
 
-## Deployment to Google Cloud Run
+### 1\. Create the Web Service
 
-This application is designed to be deployed as a container on Google Cloud Run.
+  * Log in to the [Render Dashboard](https://dashboard.render.com).
+  * Click **New \> Web Service**.
+  * Connect your GitHub repository containing this code.
+  * Ensure the **Runtime** is set to `Docker`.
 
-### 1. Set Up Secret Manager
+### 2\. Configure Environment Variables
 
-For security, all secrets are managed in Google Secret Manager and are not stored in the code.
+Do not upload a `.env` file to your repository. Instead, navigate to the **Environment** tab in your Render Web Service dashboard and add the following keys:
 
-* Go to the **Secret Manager** page in your Google Cloud Console.
-* Create the following three secrets with their corresponding values:
+  * `FLASK_SECRET_KEY`: Your 32-character secure hex string.
+  * `GOOGLE_CLIENT_ID`: Your Google OAuth Client ID.
+  * `GOOGLE_CLIENT_SECRET`: Your Google OAuth Client Secret.
+  * `PORT`: `8080` (This matches the exposed port in the `Dockerfile`).
 
-  * `GOOGLE_CLIENT_ID`
-  * `GOOGLE_CLIENT_SECRET`
-  * `flask-secret-key`
+*Note: Ensure `OAUTHLIB_INSECURE_TRANSPORT` is strictly removed from the Render environment settings, as Render provides native HTTPS.*
 
-### 2. Grant Permissions
+### 3\. Deploy and Update OAuth
 
-Ensure your Cloud Run service account (or the Compute Engine default service account) has the **Secret Manager Secret Accessor** role in IAM.
+  * Click **Create Web Service** or **Save Changes** to trigger the build process. Render will automatically install Gunicorn and boot the application.
+  * Once the service is live, copy your public Render URL.
+  * Return to the **Google Cloud Console \> APIs & Services \> Credentials** and add your exact Render callback URL to the **Authorized redirect URIs** list to enable production logins.
 
-### 3. Deploy to Cloud Run
+### 4\. Continuous Deployment
 
-Run the following command from your project's root directory. This will build the container, push it to the Artifact Registry, and deploy it to Cloud Run, securely connecting the secrets as environment variables:
+Render is configured to watch the `main` branch. Any new changes pushed to GitHub using `git push origin main` will automatically trigger a new Docker build and deployment.
 
-```bash
-gcloud run deploy baking-dashboard \
-  --source . \
-  --region [YOUR_PREFERRED_REGION] \
-  --allow-unauthenticated \
-  --set-secrets="GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,FLASK_SECRET_KEY=flask-secret-key:latest"
-```
-
-Remember to add your deployed application's URL to the "Authorized redirect URIs" in your Google OAuth settings.
-
----
+-----
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## Acknowledgments
-
-* [Flask](https://flask.palletsprojects.com/)
-* [Google Cloud](https://cloud.google.com/)
-* [Tailwind CSS](https://tailwindcss.com/)
-* [Matplotlib](https://matplotlib.org/)
-* [Google OAuth 2.0](https://developers.google.com/identity/protocols/oauth2)
+This project is licensed under the MIT License. See the [LICENSE](https://www.google.com/search?q=LICENSE) file for details.
